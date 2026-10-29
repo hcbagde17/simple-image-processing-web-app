@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Processor - Docker Demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f1f5f9;
+      color: #1e293b;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      padding: 32px;
+    }
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 1.75rem;
+      color: #0f172a;
+    }
+    .subtitle {
+      margin: 0 0 24px 0;
+      color: #64748b;
+      font-size: 0.95rem;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    input[type="file"] {
+      font-size: 0.9rem;
+      color: #475569;
+    }
+    select {
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background-color: #ffffff;
+      color: #0f172a;
+      cursor: pointer;
+    }
+    select:focus, input[type="file"]:focus {
+      outline: 2px solid #3b82f6;
+    }
+    button {
+      background-color: #2563eb;
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    button:disabled {
+      background-color: #94a3b8;
+      cursor: not-allowed;
+    }
+    .badge-wrapper {
+      margin-bottom: 24px;
+    }
+    #container-badge {
+      display: inline-block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background-color: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+      border-radius: 9999px;
+      padding: 6px 16px;
+      margin: 0;
+    }
+    .columns {
+      display: flex;
+      gap: 20px;
+    }
+    .card {
+      flex: 1;
+      background: #fafafa;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 280px;
+    }
+    .card h3 {
+      margin: 0 0 12px 0;
+      font-size: 1rem;
+      color: #334155;
+    }
+    .placeholder {
+      margin: auto 0;
+      color: #94a3b8;
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+    .card img {
+      max-width: 100%;
+      max-height: 240px;
+      object-fit: contain;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+      margin-top: auto;
+      margin-bottom: auto;
+    }
+    @media (max-width: 600px) {
+      .columns { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Image Processor</h1>
+    <p class="subtitle">Cloud Computing Classroom Docker Demo</p>
+
+    <form id="upload-form" class="controls">
+      <input type="file" id="image-input" accept="image/*" required>
+      <select id="operation-select">
+        <option value="grayscale">grayscale</option>
+        <option value="blur">blur</option>
+        <option value="rotate">rotate</option>
+      </select>
+      <button type="submit" id="submit-btn">Process</button>
+    </form>
+
+    <div class="badge-wrapper">
+      <p id="container-badge">Processed by container: -</p>
+    </div>
+
+    <div class="columns">
+      <div class="card">
+        <h3>Original</h3>
+        <span id="orig-placeholder" class="placeholder">No image chosen yet</span>
+        <img id="original-preview" alt="Original" style="display:none;">
+      </div>
+      <div class="card">
+        <h3>Processed</h3>
+        <span id="proc-placeholder" class="placeholder">Processed image will appear here</span>
+        <img id="processed-preview" alt="Processed" style="display:none;">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('upload-form');
+    const imageInput = document.getElementById('image-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const origImg = document.getElementById('original-preview');
+    const procImg = document.getElementById('processed-preview');
+    const origPlaceholder = document.getElementById('orig-placeholder');
+    const procPlaceholder = document.getElementById('proc-placeholder');
+    const badge = document.getElementById('container-badge');
+
+    imageInput.addEventListener('change', () => {
+      if (imageInput.files[0]) {
+        origImg.src = URL.createObjectURL(imageInput.files[0]);
+        origImg.style.display = 'block';
+        origPlaceholder.style.display = 'none';
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const file = imageInput.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('operation', document.getElementById('operation-select').value);
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Processing...';
+      badge.textContent = 'Processing...';
+
+      try {
+        const response = await fetch('/process', { method: 'POST', body: formData });
+        if (!response.ok) {
+          const errText = await response.text();
+          alert('Error: ' + errText);
+          badge.textContent = 'Processed by container: -';
+          return;
+        }
+
+        const containerId = response.headers.get('X-Container-ID') || 'unknown';
+        badge.textContent = 'Processed by container: ' + containerId;
+
+        const blob = await response.blob();
+        procImg.src = URL.createObjectURL(blob);
+        procImg.style.display = 'block';
+        procPlaceholder.style.display = 'none';
+      } catch (err) {
+        alert('Request failed: ' + err.message);
+        badge.textContent = 'Processed by container: -';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Process';
+      }
+    });
+  </script>
+</body>
+</html>
